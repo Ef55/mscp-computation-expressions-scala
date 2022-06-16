@@ -1,0 +1,10 @@
+<Variables>
+  <Setter variable="while_condition_0" function="(Altitude &lt;= 1000.0)" activator="(!evaluationFlag_while_condition_0_0)"/>
+  <Setter variable="evaluationFlag_while_condition_0_0" function="true" />
+  <Setter variable="Pitch" function="20.0" activator="((!evaluationFlag_Pitch_0) &amp; while_condition_0)"/>
+  <Setter variable="evaluationFlag_Pitch_0" function="true" activator="while_condition_0"/>
+  <Setter variable="evaluationFlag_Pitch_0" function="true" activator="(!while_condition_0)"/>
+  <Setter variable="memoised_whileBodyEvaluated_0" function="evaluationFlag_Pitch_0" />
+  <Setter variable="evaluationFlag_while_condition_0_0" function="false" activator="(memoised_whileBodyEvaluated_0 &amp; while_condition_0)"/>
+  <Setter variable="evaluationFlag_Pitch_0" function="false" activator="(memoised_whileBodyEvaluated_0 &amp; while_condition_0)"/>
+</Variables>

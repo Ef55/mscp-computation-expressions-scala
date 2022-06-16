@@ -1,0 +1,25 @@
+\usepackage{listings}
+
+\lstset{
+    keepspaces=true,
+    breaklines=true,
+    breakatwhitespace=true,
+    columns=fixed,
+    escapeinside=``,
+    frame=tb,
+    basicstyle=\small\ttfamily,
+    commentstyle=\itshape,
+    keywordstyle=\bfseries,
+}
+
+\lstdefinelanguage{fsharp}{
+    morekeywords = {type, member, new, let, let!, return, for, yield}
+}
+
+\lstdefinelanguage{scala}{
+    morecomment=[l]{//},
+    morekeywords = {sealed, type, override, val, var, trait, case, class, def, extension, extends, with, if, then, else, while, do, for, yield, inline, enum}
+}
+
+\newcommand{\scalasnippet}[1]{\lstinline[language=scala]{#1}}
+\newcommand{\fssnippet}[1]{\lstinline[language=fsharp]{#1}}

@@ -1,0 +1,67 @@
+\subsection{A motivating example}
+
+Simple planes \cite{simplePlanes} is a computer game where you have to create your own planes, which you can then fly.
+
+More interestingly, it is possible to write a program which will control the plane using a dedicated programming language, 
+funky trees \cite{funkyTrees}.
+This language is however expressed in XML,
+doesn't directly support usual control-flow structures
+and isn't type safe.
+
+This makes this language both difficult to explain to people without programming experience, as well as quite frustrating to people with such experience.
+This is quite a shame,
+as the highly visual and concrete aspect of controlling a plane could make a great pedagogical tool to teach computer science.
+
+\subsection{Designing a better language}
+One solution to this issue would be to design a 
+``higher-level'' programming language for simple planes,
+treating XML as its ``low-level'' assembly.
+
+However, designing such a language and implementing a full compiler for it
+would quickly become time consuming, and would most likely result in pretty minimal (feature-wise) language.
+
+Another quicker solution would be to use an pre-existing language,
+and embed our language in it directly, resulting in a domain-specific language (DSL) \cite{langAndTools}.
+
+\Scala{}, being a feature-rich language, makes a pretty good candidate for such usages;
+e.g. it allows custom operators definitions and has excellent support for algebraic data types.
+
+Thus, an attempt at writing our DSL could yield something along these lines:
+\lstinputlisting[language=scala]{code/plane_example.scala}
+
+We can however already notice some downsides, among others:
+\begin{itemize}
+    \item The variables are named twice and must be declared before all of the actual code;
+    \item An operator must be used for sequencing (\scalasnippet{andThen}).
+\end{itemize}
+
+Overall, the user ends up manipulating the resulting AST a bit too directly, despite the DSL making it a bit more natural.
+This is especially problematic, as the end-user (the one using the DSL) might be learning programming, in which case 
+manipulating a program (for the plane) using a program (the one in \Scala{}) might be confusing.
+Even for more seasoned programmers, this can be confusing if they are not used to computer languages representation.
+
+\subsection{Metaprogramming}
+One possible way to alleviate the mentioned issues is to use metaprogramming.
+In particular, \Scala{} has some young yet powerful metaprogramming facilities \cite{metaprogramming}.
+
+\begin{tcolorbox}
+\paragraph{Aside} 
+From now on, we will be talking about multiple kinds of AST at the same time:
+the AST of the \Scala{} program, which will be manipulated through metaprogramming,
+and the AST which is the results of this program, built using the DSL and thus defined by the user.
+We will refer to the former as ``\Scala{}'s AST'' and to the later as ``user's AST''.
+\end{tcolorbox}
+
+In fact, these facilities allow to manipulate the \Scala{}'s program AST directly.
+This would allow to define some function on ASTs such that
+\[ \codefrag{ t_1; t_2} \longmapsto \textsc{sequence}(t_1, t_2) \ \]
+Where $\textsc{sequence}$ is some function (or constructor) producing a user AST.
+
+\subsection{Goals}
+The goal of this project, as well as report, is thus to explore how metaprogramming can be used for AST generation.
+More precisely, starting from the less-funky-tree compiler \cite{less-funky-trees},
+it aims at identifying elements which could be generalized and abstracted,
+as to create a metaprogramming-powered DSL library.
+
+These ideas being also kind of reminiscent of \Fsharp{}'s computation expressions \cite{ceZoo},
+this project will also aim at seeing potential common abstractions as well as differences between the two.

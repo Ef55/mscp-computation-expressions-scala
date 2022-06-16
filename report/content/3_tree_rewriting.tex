@@ -1,0 +1,51 @@
+\newcommand{\treetype}[0]{\lstinline{Tree[_]}}
+
+The core idea to solve the issue at hand is to use Scala metaprogramming,
+more precisely its reflection capabilities, which allow to directly manipulate the program's AST.
+
+The problem can then be split into the following sub-problems:
+\begin{enumerate}
+    \item Allow the DSL designer to specify how to transform a Scala construct into its counterpart; \label{sprob:spec}
+    \item Make the DSL type-check; \label{sprob:typecheck}
+    \item Given a Scala AST, traverse it and identify which instances of the different constructs (variable definition, expression sequencing, \ldots{}) have to be transformed into their user's AST counterpart. \label{sprob:transform}
+\end{enumerate}
+\newcommand{\refprob}[1]{{(\ref{sprob:#1})}}
+
+
+\refprob{spec} can easily be solved using a trait,
+that the DSL developer will have to implement:
+\vspace{4em}
+\lstinputlisting[language=scala]{code/ast_builder_early.scala}
+The type parameter \treetype{} is the type of the produced AST (i.e. the user's AST), and \scalasnippet{Variable[_]} is used to represent variables inside of the user's AST. 
+Its type parameter allows the user to have type-safety inside the DSL, e.g.
+it allows to add a type-safe \scalasnippet{+} operator to \rob{}'s DSL:
+\lstinputlisting[language=scala]{code/tree_int_ext.scala}
+
+
+With the previous solution,
+the transform part of \refprob{transform} can be done by simply replacing the Scala construct by a call to the correct method. 
+We can also decide to apply the transformation if and only if its operand have the user's AST type (i.e \scalasnippet{AST[_]} in \rob{}'s case). A simple example would be:
+
+\translation{code/type_guide}
+
+Here, \scalasnippet{i} is not transformed because it does not have type \scalasnippet{Variable[_]}, whereas
+\scalasnippet{t} has.
+
+Finally, a simple solution to \refprob{typecheck} is to introduce implicit conversion when needed:
+\translation{code/type_check_conv}
+This code sample won't compile for multiple reasons:
+\begin{itemize}
+    \item The condition of a control-flow structure must be a \scalasnippet{Boolean};
+    \item The variable initialization as well as both assignations have type \scalasnippet{Tree[Int]} as their right-hand-side, whereas the left-hand-side is a \scalasnippet{Variable[Int]}.
+\end{itemize}
+Also, the fact that both assignations have type \scalasnippet{Unit}, whereas they will have type \scalasnippet{Tree[Unit]} after translation, can disallow some code we would like to allow.
+However, if implicit conversions are added, more precisely
+\begin{itemize}
+    \item \scalasnippet{Conversion[Tree[Boolean], Boolean]},
+    \item \scalasnippet{Conversion[Tree[T], Variable[T]]} and
+    \item \scalasnippet{Conversion[Unit, Tree[Unit]]}
+\end{itemize}
+this codes is then accepted by the compiler.
+These implicit conversions do not ``do'' anything:
+they simply indicate to the compiler that such programs should compile, and are erased during transformation,
+as the resulting user's AST does not require a conversions e.g. from \scalasnippet{Tree[Boolean]} to \scalasnippet{Boolean]} inside the condition of an if-then-else.

@@ -1,0 +1,39 @@
+\label{sec:caveats}
+
+The tricks introduced in the previous section have some serious caveats,
+that we will now discuss.
+
+The most glaring one is the use of implicit conversions. 
+These are known to be a kind of pandora's box of confusing behaviors; here however, the issue goes a bit deeper.
+The issue is that those conversions are ``contextual'',
+they only make sense in a particular case: the \lstinline{Boolean} one only makes sense when used in a control-flow structure;
+the tree to variable one should only be used to assign to a variable;
+the \lstinline{Unit} one is only meaningful when applied to an assignation to a user's AST variable.
+
+\lstinputlisting[language=scala]{code/invalid_conversions.scala}
+
+It is possible to mitigate this by implementing the conversions such that they throw an exception (at runtime) when called.
+Since they are erased anyway when used correctly, this will only throw when used incorrectly. 
+
+Even though practical and easy to implement, 
+this idea is terrible for the user, as something which is statically known results in a runtime error, which is dirty.
+
+It is possible to report such misuse during AST transformation, by detecting and reporting unwanted conversions, and then stopping compilation.
+This however is error-prone and requires to correctly predict every corner-case.
+
+This motivated the abandon of features which relied too heavily on implicit conversions; 
+more precisely, if-then-else, while-loops, variable assignations and user-level variables inference are not supported by the library.
+
+Instead, a special operator is used for user-level variables definition and assignation.
+To be nice to use, the operator for user-level variables had to be a prefix operator; since scala only allows a handful of prefix operators (\scalasnippet{+, -, !, ~}),
+\scalasnippet{!} was chosen since it reminds of \Fsharp{} computation expressions (\cref{sec:ce}).
+The symbol \scalasnippet{=!} was chosen for assignation to be coherent with \scalasnippet{!}, even though \scalasnippet{:=} could have been a better choice (it is both already known and has no risk of being confused with \scalasnippet{!=}).
+The reflection API allows to test for variable mutability,
+as such assignation (using \lstinline{=!}) on non-mutable variables can be detected and reported.
+
+Replacements can be imported using a mixin for the control-flow structures, which are simply implemented as functions with judicious names and currying of arguments.
+
+\begin{figure}[h]
+\lstinputlisting[language=scala]{code/dsl_over_conv.scala}
+\caption{Snippet of code showing the notations used.}
+\end{figure}

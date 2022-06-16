@@ -1,0 +1,69 @@
+\documentclass[sigplan,screen,nonacm,natbib=false]{acmart}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+
+\settopmatter{printfolios=true}
+
+\usepackage[sorting=none]{biblatex}
+\addbibresource{bibliography.bib}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+\usepackage{cleveref}
+
+\usepackage{enumitem}
+\setlist{leftmargin=2.5em}
+
+
+\newcommand{\codefrag}[1]{'\{ #1 \}}
+
+\newcommand{\Scala}[0]{Scala}
+\newcommand{\Fsharp}[0]{F\#}
+
+\usepackage{parskip}
+\usepackage{tcolorbox}
+
+\input{preamble/listings.tex}
+
+
+\title{AST builders, \Scala{} \& metaprogramming}
+\subtitle{Optional semester project}
+\author{Noé De Santo}
+\date{Spring 2022}
+
+\newcommand{\translation}[1]{
+    \lstinputlisting[language=scala]{#1/before.scala}
+    \vspace{-1em}
+    which should be transformed into:
+    \lstinputlisting[language=scala]{#1/after.scala}
+}
+
+\begin{document}
+
+    \maketitle
+
+    \section{Introduction}
+    \input{content/1_introduction.tex}
+
+    \section{A toy example}
+    \input{content/2_toy.tex}
+
+    \section{AST builders}
+    \input{content/3_tree_rewriting.tex}
+
+    \section{More is less}
+    \input{content/4_caveats.tex}
+
+    \section{Some extra considerations}
+    \input{content/5_meta_meta.tex}
+
+    \section{Computation expressions}
+    \input{content/6_computations.tex}
+
+    \section{Discussion}
+    \input{content/7_discussion.tex}
+
+    \printbibliography
+
+\end{document}

@@ -1,0 +1,23 @@
+\subsection{ExProc library}
+The result of everything we mentioned in this report is a library to express computation expressions and AST builders in Scala, nicknamed ExProc (\textbf{Ex}pression \textbf{Proc}essor)\footnote{\url{https://github.com/Ef55/scala-expression-processor}}.
+
+Two fully functional compilers for two video game languages were also built on top of this library, both available on Github:
+\begin{itemize}
+    \item \url{https://github.com/Ef55/hrm-scala-compiler};
+    \item \url{https://github.com/Ef55/less-funky-trees}\\ (which is an adaptation of \cite{less-funky-trees}).
+\end{itemize}
+
+\subsection{Future work}
+
+\paragraph{Richer AST builders}
+The features of the AST builders were highly dictated by the example compiler which were meant to be built on top of it.
+Even though great efforts were put into making the available features as general as possible, 
+this also means that features which were not needed at all were not implemented.
+
+One could explore some of those missing features,
+such as support for functions definition at the user-language level.
+
+\paragraph{More general computation expressions}
+As mentioned, the original computation expressions from \Fsharp{} do not enforce any typing restrictions, which is not the case of our implementation.
+
+One could try to lift this restriction. The current implementation could in fact already support this (all of the builder's method are accessed through reflection), but some care might be needed to make the potential errors understandable to both the DSL developer and the end user.

@@ -1,0 +1,48 @@
+\subsection{Side effects ordering}
+One might wonder how the following piece of code should be translated:
+\lstinputlisting[language=scala]{code/sequence.scala}
+
+We would like its value to be an AST which makes \rob{} rotate left and then advance,
+but we would also like \texttt{Hello} to be printed when said AST is generated.
+
+The trick to achieve this, and more generally to preserve the order of side effects inside a computation, is to add synthetic binders inside of code blocks:
+\lstinputlisting[language=scala]{code/sequence_bind.scala}
+
+\subsection{Meta variables}
+One lingering question is 
+``Why rely on an operator to decide when to translate a variable definition? 
+Why not reject anything which cannot be translated?''
+
+This comes from a will to allow manipulation of ASTs as Scala constructs, as well as allowing Scala to be used as some kind of the meta-language for the DSL. 
+
+The simplest example is to allow toggling of debug code:
+\lstinputlisting[language=scala]{code/debug.scala}
+Here, (1) will be executed by \rob{}, whereas (2) toggles whether something should be printed by \rob{} at runtime.
+
+In particular, if this whole program is passed for translation,
+\lstinline{debug}'s definition should not be changed, staying at Scala-level, whereas \lstinline{orientation} should be transformed as described before.
+
+\subsection{Meta sequences} \label{sec:meta-for}
+This idea can be pushed further: 
+it would be practical to declare scala-loops which generate code.
+
+A simple example using the \scalasnippet{goto} function we introduced earlier:
+\translation{code/rob_meta_for} 
+
+This can easily be done by adding an additional case when transforming a sequence $t_1;t_2$.
+Previously, this got translated if and only if both had type \treetype{};
+now, it should also be translated when 
+\begin{center}
+    $t_1$: \lstinline{Seq[Tree[_]]} = $s_1 :: s_2 :: \ldots :: s_n$
+\end{center}
+in which case it should be translated into 
+\begin{center}
+    $(s_1 :: s_2 :: \ldots :: s_n :: t_2)$\scalasnippet{.foldRight(sequence(_, _))}
+\end{center}
+
+\subsection{Inlining all the things}\label{sec:inline}
+
+One thing which can seem inconsequential is whether the translation functions must be \scalasnippet{inline} or not. 
+
+However, making them \scalasnippet{inline} allows for compile-time features opt-out. Let's assume for a moment that we would like the \rob{} DSL to not allow variable assignation, to encourage a functional programming style. This could then be done as follows:
+\lstinputlisting[language=scala]{code/rob/functional.scala}

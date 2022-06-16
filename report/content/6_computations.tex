@@ -1,0 +1,117 @@
+\label{sec:ce}
+
+The \Fsharp{} programming language has an interesting feature called ``Computation Expressions''.
+The core idea is that the language has some ``meaningless'' 
+(in the sense that they don't have any semantics) keywords, which are disabled by default.
+These keywords include, but are not limited to \fssnippet{let!}, \fssnippet{return} and \fssnippet{for}.
+
+However, the language allows the definition of builders, which will give meaning to these keywords.
+The developer can then opt-in to one of those builders, 
+which will use the definitions inside the builder to give meaning to the keywords.
+\lstinputlisting[language=fsharp]{code/maybe.fs}
+
+\subsection{AST builders as computations}
+
+This minimalist example already allows to paint some parallels with our AST builders:
+\begin{itemize}
+    \item Both have a special kind of value definition, either the user-level variable definition (\scalasnippet{!}) or the \lstinline[language=fsharp]{let!} keyword;
+    \item Both use a builder to define the meaning of the special constructs.
+\end{itemize}
+
+This begs the question as whether AST builders could be expressed as computation expressions.
+In fact, computation expressions were designed to be extremely abstract,
+as to fit many different usages; the methods in the builder do not even need to conform to any specific type signature, and allow any types to be used as long as everything type-checks at use-site.
+It would thus seems natural for AST builders to be expressible in this framework.
+
+It turns out to be possible, but require to step away from the ``typical signature'' of the \fssnippet{Bind} method. Even though no signature is enforced, \fssnippet{Bind} usually has the type \fssnippet{M<'T> -> ('T -> M<'S>) -> M<'S>} (one could recognize the signature of monads' bind/flatmap). The first argument is the computation being bound, the second argument is the remaining of the computation, which expects to receive the result of the computation getting bound, and the returned value is the result of the overall computation.
+
+In the case of ASTs, \fssnippet{M} would be \scalasnippet{Tree[_]},
+and ``computation'' simply becomes a synonym for an AST.
+The second argument would again be the remaining of the computation,
+however it doesn't expect the result of the computation. 
+It wouldn't make sense, as a computation is an AST, and its ``result'' is not known at AST building time, only at its execution time.
+Instead, something representing that variable, allowing to access its result at execution time, should be passed to the subsequent computation. 
+This yields the following type signature 
+\scalasnippet{Tree[T] => (Variable[T] => Tree[S]) => Tree[S]},
+whose body would be something among the lines of:
+\lstinputlisting[language=scala]{code/ast_bind.scala}
+
+\subsection{Implementation}
+Based on the previous observation,
+it was decided to implement some kind of computation expressions in Scala, and to re-implement the AST builder interface as a computation expression.
+
+\subsubsection{Implementing computation expressions}
+When implementing computation expressions,
+some choices had to be made. 
+In particular, to simplify usage, a type signature was fixed. 
+The fixed signature is the ``typical signature'' (which allows to express monadic computations), with the tweak mentioned earlier to accommodate the \scalasnippet{Variable[_]} type when binding a value.
+
+Also, some of their original features do no make sense in Scala,
+either because the language already supports some of these (e.g. \scalasnippet{for}-loops),
+or because they were deemed to not be a good safety/value tradeoff,
+such as \scalasnippet{while}-loops (see \cref{sec:caveats} for a discussion on this in the context of AST builders).
+
+On the other hand,
+assignation is not supported by computation expressions
+(\Fsharp{} is a functional language after all).
+Our custom operator \scalasnippet{=!} could be implemented as a simple extension method.
+However, this approach has one downside: it allows values to be reassigned, which is something we would like to prevent, so that the written code still mirrors Scala semantics.
+\lstinputlisting[language=scala]{code/val_assign.scala}
+This can easily be ensured using metaprogramming; 
+thus, the \scalasnippet{=!} operator was added as a feature of our implementation of computation expressions.
+Of course, in case re-assignation doesn't make sense in the context of a particular computation expression, the designer can opt-out of it (as detailed in \cref{sec:inline}).
+
+The final interface a user has to define is shown in \cref{fig:ce_int}.
+\begin{figure*}[p]
+\lstinputlisting[language=scala]{code/computation_interface.scala}
+\caption{The interface of a computation expression builder.}
+\label{fig:ce_int}
+\end{figure*}
+The \scalasnippet{init} method is used to implement lazy computations, which we won't discuss in the present report.
+
+A final interesting note is that our ``meta sequences'' (\cref{sec:meta-for}) map almost exactly to the \fssnippet{for}-loops in \Fsharp{}'s computation expressions, 
+the only difference being that we allow to combine any construct which has type \scalasnippet{Seq[Computation[_]]} to a following \scalasnippet{Computation[_]}, whereas \Fsharp{} only allow it if the sequence is generated by a \fssnippet{for _ yield _}.
+
+\subsubsection{\scalasnippet{AstBuilder}'s new implementation}
+With all of the previous considerations in mind,
+defining an AST builder as a computation expression just requires a few lines of code (see \cref{fig:astb_ce}).
+\begin{figure*}[p]
+\lstinputlisting[language=scala]{code/ast_interface.scala}
+\caption{AST builder as a computation expression.}
+\label{fig:astb_ce}
+\end{figure*}
+Note that it could be made even shorter, 
+but some methods are renamed (e.g. \scalasnippet{unit} into \scalasnippet{constant}) to provide more meaningful name in the context of ASTs and programing languages.
+
+\subsection{Tradeoffs}
+Implementing the \scalasnippet{AstBuilder} as a computation expression of course comes with some tradeoffs.
+
+Among the cons, we can cite the loss of some tiny, yet nice features, which do make sense when constructing ASTs, but don't in the more general context of computations expressions.
+A concrete example is the naming of variables.
+When the builder needs to generate a fresh variable, it calls \scalasnippet{freshVariable}, which is not aware of the name the variable has in Scala, which prevents it from having the same name.
+
+This could be added by adding the name of the (Scala) variable as an argument to \scalasnippet{bind}, which would then pass it to \scalasnippet{freshVariable}. However, since this was not a defining feature, nor was it useful to any other computation expression,
+this feature was dropped when migrating to the computation expressions framework.
+
+On the pros side, 
+the most important one is simply code simplicity.
+The features of computation expressions being more general and abstract that the ones of AST builders,
+the code ended up being simpler yet more robust.
+This is especially great as, from personal experience,
+such code can have some subtle bugs and be pretty difficult to understand; as such, making the code simpler is a huge win.
+
+\subsection{A tiny shadow on the wall}
+One might wonder why the computation type, \scalasnippet{Computation[_]} is a type parameter instead of a (path-)dependent type,
+as this would be more fitting.
+
+This relates to a bug in Dotty (issue \href{https://github.com/lampepfl/dotty/issues/15176}{\#15176}), 
+which prevents proper type testing when mixing dependent types and metaprogramming.
+
+This made it impossible to consistently detect computations (as this is done using type equality) if the said type is dependent, instead of passed as a parameter.
+
+This is also the reason why computation expressions' for-loops are not part of the presented interface in \cref{fig:ce_int},
+even though we mentioned that such loops are supported:
+properly abstracting them would require a dependent type,
+which yields the issue mentioned above. 
+As such, this feature has a fixed (i.e. defined by the library for all computations, not by the computation developer) implementation,
+as we considered that making this feature available at all was more important than allowing the user to customize its behavior.
